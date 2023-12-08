@@ -381,7 +381,7 @@ func (r *SCTPTransport) collectStats(collector *statsReportCollector) {
 	collector.Collect(stats.ID, stats)
 }
 
-func (r *SCTPTransport) generateAndSetDataChannelID(dtlsRole DTLSRole, idOut **uint16) error {
+func (r *SCTPTransport) generateAndSetDataChannelID(dtlsRole DTLSRole, dc *DataChannel) error {
 	var id uint16
 	if dtlsRole != DTLSRoleClient {
 		id++
@@ -406,7 +406,7 @@ func (r *SCTPTransport) generateAndSetDataChannelID(dtlsRole DTLSRole, idOut **u
 		if _, ok := idsMap[id]; ok {
 			continue
 		}
-		*idOut = &id
+		dc.id = &id
 		return nil
 	}
 
