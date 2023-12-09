@@ -372,9 +372,9 @@ func (pc *PeerConnection) checkNegotiationNeeded() bool { //nolint:gocognit
 		return true
 	}
 
-	pc.sctpTransport.lock.Lock()
+	pc.sctpTransport.lock.RLock()
 	lenDataChannel := len(pc.sctpTransport.dataChannels)
-	pc.sctpTransport.lock.Unlock()
+	pc.sctpTransport.lock.RUnlock()
 
 	if lenDataChannel != 0 && haveDataChannel(localDesc) == nil {
 		return true
@@ -2202,12 +2202,12 @@ func (pc *PeerConnection) GetStats() StatsReport {
 		pc.iceTransport.collectStats(statsCollector)
 	}
 
-	pc.sctpTransport.lock.Lock()
+	pc.sctpTransport.lock.RLock()
 	dataChannels := append([]*DataChannel{}, pc.sctpTransport.dataChannels...)
 	dataChannelsAccepted = pc.sctpTransport.dataChannelsAccepted
 	dataChannelsOpened = pc.sctpTransport.dataChannelsOpened
 	dataChannelsRequested = pc.sctpTransport.dataChannelsRequested
-	pc.sctpTransport.lock.Unlock()
+	pc.sctpTransport.lock.RUnlock()
 
 	for _, d := range dataChannels {
 		state := d.ReadyState()
@@ -2307,8 +2307,8 @@ func (pc *PeerConnection) generateUnmatchedSDP(transceivers []*RTPTransceiver, u
 	mediaSections := []mediaSection{}
 
 	// Needed for pc.sctpTransport.dataChannelsRequested
-	pc.sctpTransport.lock.Lock()
-	defer pc.sctpTransport.lock.Unlock()
+	pc.sctpTransport.lock.RLock()
+	defer pc.sctpTransport.lock.RUnlock()
 
 	if isPlanB {
 		video := make([]*RTPTransceiver, 0)
