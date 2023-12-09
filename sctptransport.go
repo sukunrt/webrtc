@@ -342,8 +342,8 @@ func (r *SCTPTransport) updateMaxChannels() {
 
 // MaxChannels is the maximum number of RTCDataChannels that can be open simultaneously.
 func (r *SCTPTransport) MaxChannels() uint16 {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.lock.RLock()
+	defer r.lock.RUnlock()
 
 	if r.maxChannels == nil {
 		return sctpMaxChannels
@@ -381,20 +381,28 @@ func (r *SCTPTransport) collectStats(collector *statsReportCollector) {
 	collector.Collect(stats.ID, stats)
 }
 
-func (r *SCTPTransport) generateAndSetDataChannelID(dtlsRole DTLSRole, dc *DataChannel) error {
+func (r *SCTPTransport) generateAndSetDataChannelID(dtlsRole DTLSRole, d *DataChannel) error {
 	var id uint16
 	if dtlsRole != DTLSRoleClient {
 		id++
 	}
 
-	max := r.MaxChannels()
-
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	max := sctpMaxChannels
+	if r.maxChannels != nil {
+		max = *r.maxChannels
+	}
 
 	// Create map of ids so we can compare without double-looping each time.
 	idsMap := make(map[uint16]struct{}, len(r.dataChannels))
 	for _, dc := range r.dataChannels {
+		// We already have acquired the lock on this datachannel
+		if dc == d {
+			// id already exists
+			if d.id != nil {
+				return nil
+			}
+			continue
+		}
 		if dc.ID() == nil {
 			continue
 		}
@@ -406,7 +414,8 @@ func (r *SCTPTransport) generateAndSetDataChannelID(dtlsRole DTLSRole, dc *DataC
 		if _, ok := idsMap[id]; ok {
 			continue
 		}
-		dc.id = &id
+
+		d.id = &id
 		return nil
 	}
 

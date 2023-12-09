@@ -160,13 +160,20 @@ func (d *DataChannel) open(sctpTransport *SCTPTransport) error {
 	}
 
 	if d.id == nil {
-		// avoid holding lock when generating ID, since id generation locks
+		// All concurrent datachannel creates release their lock
 		d.mu.Unlock()
+		// Take the sctpTransport lock
+		d.sctpTransport.lock.Lock()
+		// Take the datachannel lock. At this point all other concurrent data channels have
+		// release their d.mu lock. This makes it safe to query their IDs for generating a new
+		// datachannel id.
+		d.mu.Lock()
 		err := d.sctpTransport.generateAndSetDataChannelID(d.sctpTransport.dtlsTransport.role(), d)
+		d.sctpTransport.lock.Unlock()
 		if err != nil {
+			d.mu.Unlock()
 			return err
 		}
-		d.mu.Lock()
 	}
 	dc, err := datachannel.Dial(association, *d.id, cfg)
 	if err != nil {
